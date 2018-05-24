@@ -1,4 +1,4 @@
-FROM mhart/alpine-node:6.7.0
+FROM mhart/alpine-node:8
 
 ENV LIBSASS_VERSION=3.3.1 SASSC_VERSION=3.3.1
 
