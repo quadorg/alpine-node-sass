@@ -1,23 +1,29 @@
-FROM mhart/alpine-node:8
+FROM node:8.11.0-alpine
 
-ENV LIBSASS_VERSION=3.3.1 SASSC_VERSION=3.3.1
+RUN apk update && \
+  apk upgrade && \
+  apk add git g++ gcc libgcc libstdc++ linux-headers make python && \
+  apk update && \
+  npm install -g npm5
 
-RUN apk --update add git build-base libstdc++ make g++ python curl && \
-    git clone https://github.com/sass/sassc && \
-    cd sassc && git checkout $SASSC_VERSION && \
-    git clone https://github.com/sass/libsass && \
-    cd libsass && \
-    git checkout $LIBSASS_VERSION && \
-    cd .. && SASS_LIBSASS_PATH=/sassc/libsass make && \
-    mv bin/sassc /usr/bin/sassc && \
-    npm install -g node-sass@3.8.0
+# install libsass
+RUN git clone https://github.com/sass/sassc && cd sassc && \
+  git clone https://github.com/sass/libsass && \
+  SASS_LIBSASS_PATH=/sassc/libsass make && \
+  mv bin/sassc /usr/bin/sassc && \
+  cd ../ && rm -rf /sassc
 
-RUN curl -L -o /usr/local/bin/dumb-init https://github.com/Yelp/dumb-init/releases/download/v1.0.0/dumb-init_1.0.0_amd64 && \
-  chmod +x /usr/local/bin/dumb-init && \
-  apk del git build-base curl && \
-  rm -rf /var/cache/apk/* /sassc
+# created node-sass binary
+ENV SASS_BINARY_PATH=/usr/lib/node_modules/node-sass/build/Release/binding.node
+RUN git clone --recursive https://github.com/sass/node-sass.git && \
+  cd node-sass && \
+  git submodule update --init --recursive && \
+  npm install && \
+  node scripts/build -f && \
+  cd ../ && rm -rf node-sass
 
-ENTRYPOINT ["dumb-init"]
-CMD ["node"]
+# add binary path of node-sass to .npmrc
+RUN touch $HOME/.npmrc && echo "sass_binary_cache=${SASS_BINARY_PATH}" >> $HOME/.npmrc
 
-
+ENV SKIP_SASS_BINARY_DOWNLOAD_FOR_CI true
+ENV SKIP_NODE_SASS_TESTS true
